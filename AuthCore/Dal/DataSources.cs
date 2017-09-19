@@ -15,7 +15,7 @@ namespace AuthCore.Dal
 
         public static void Init()
         {
-            _Default = DataMapperProvider.Build("SqlConfig.xml", Assembly.GetExecutingAssembly(), "ConnectionString");
+            _Default = DataMapperProvider.Build("Dal/SqlConfig.xml", Assembly.GetExecutingAssembly(), "ConnectionString");
         }
 
         public static IDataMapper Default
@@ -26,8 +26,7 @@ namespace AuthCore.Dal
                 {
                     if (_Default == null)
                     {
-                        _Default = DataMapperProvider.Build("SqlConfig.xml", Assembly.GetExecutingAssembly(), "ConnectionString");
-                        //throw new Exception("初始化DataSources数据源失败");
+                        Init();
                     }
                     return _Default;
                 }

@@ -15,7 +15,6 @@ namespace AuthCore.Logic
         public static int AddAccount(AddAccountRequest request)
         {
             //check
-            CheckModelIsNull(request.OwnerType,"所属系统类型");
             CheckModelIsNull(request.LoginName,50,"登录名称");
             CheckModelIsNull(request.LoginPassword, 50, "登录密码");
 
@@ -107,7 +106,7 @@ namespace AuthCore.Logic
         public static void EditLoginPassword(int accountId, string loginPassword)
         {
             IsExistsAccount(accountId);
-            CheckModelIsNull(loginPassword, 50, "登录密码");
+            CheckModelIsNull(loginPassword, 50, "密码");
 
             AuthDal.EditLoginPassword(accountId, loginPassword);
         }
@@ -178,7 +177,6 @@ namespace AuthCore.Logic
         public static int AddRole(AddRoleRequest request)
         {
             //check
-            CheckModelIsNull(request.OwnerType, "所属系统类型");
             CheckModelIsNull(request.Name, 50, "角色名称");
 
             var result = AuthDal.IsExistsRoleByName(request.Name, request.OwnerType, request.DataDimensionId);

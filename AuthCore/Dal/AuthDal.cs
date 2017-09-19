@@ -75,7 +75,26 @@ namespace AuthCore.Dal
 
         public static void DeleteAccount(int accountId)
         {
-            DataSources.Default.ExecuteNonQuery("DeleteAccount", accountId);
+            var session = DataSources.Default.CreateSession();
+            session.BeginTransaction();
+            try
+            {
+                Hashtable ht = new Hashtable();
+                ht.Add("AccountId", accountId);
+                DataSources.Default.ExecuteNonQuery("DeleteAccount", session,null,ht);
+
+                DeleteRoleAccount(accountId,session);
+                session.CommitTranscation();
+            }
+            catch (Exception e)
+            {
+                session.RollbackTranscation();
+                throw e;
+            }
+            finally
+            {
+                session.Dispose();
+            }
         }
 
         public static int EditAccountRecordStatus(int accountId,RecordStatus status)
@@ -231,6 +250,14 @@ namespace AuthCore.Dal
                 ht.Add("DataDimensionIds", string.Join(",", query.DataDimensionIds));
                 conditions.Add(new StatementCondition("DataDimensionIds", true));
             }
+
+            var sort = "DefualtSort";
+            if (!string.IsNullOrEmpty(query.SortField))
+            {
+                sort = "SortField";
+                ht.Add("SortField", query.SortField);
+            }
+            conditions.Add(new StatementCondition(sort, true));
 
             return DataSources.Default.QueryCollection<RoleResponse>("GetRoles", null, conditions, query.StartIndex,query.EndIndex,ht);
         }
