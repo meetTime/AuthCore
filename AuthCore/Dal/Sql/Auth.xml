@@ -1,0 +1,165 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<statements>
+  <!--账号-->
+  <sql id="AddAccount">
+    insert into [Auth_Account]
+    ([Name],[OwnerType],[OwnerId],[LoginName],[LoginPassword],[AppKey],[AppSecret],[SignKey],[IpWhiteList],[RecordStatus])
+    values
+    (#Name#,#OwnerType#,#OwnerId#,#LoginName#,#LoginPassword#,#AppKey#,#AppSecret#,#SignKey#,#IpWhiteList#,
+    #RecordStatus#)
+    select SCOPE_IDENTITY()
+  </sql>
+
+  <sql id="GetAccountsByIds">
+    select * from Auth_Account
+    where AccountId in ($AccountIds$)
+  </sql>
+
+  <sql id="GetAccountByLoginName">
+    select * from Auth_Account
+    where LoginName = #LoginName#
+    and OwnerType=#OwnerType#
+    and OwnerId=#OwnerId#
+  </sql>
+  
+  <sql id="DeleteAccount">
+    delete from Auth_Account where AccountId=#AccountId#
+  </sql>
+
+  <sql id="EditAccountRecordStatus">
+    update Auth_Account set
+    RecordStatus=#RecordStatus#
+    where AccountId=#AccountId#
+  </sql>
+
+  <sql id="EditLoginPassword">
+    update Auth_Account set
+    LoginPassword=#LoginPassword#
+    where AccountId=#AccountId#
+  </sql>
+
+  <sql id="EditAppKeyandAppSecret">
+    update Auth_Account set
+    AppKey=#AppKey#,
+    AppSecret=#AppSecret#
+    where AccountId=#AccountId#
+  </sql>
+
+  <sql id="EditSignKey">
+    update Auth_Account set
+    SignKey=#SignKey#
+    where AccountId=#AccountId#
+  </sql>
+
+  <sql id="EditIpWhiteList">
+    update Auth_Account set
+    IpWhiteList=#IpWhiteList#
+    where AccountId=#AccountId#
+  </sql>
+
+  <sql id="IsExistsAppKey">
+    select count(*) from Auth_Account
+    where AppKey=#AppKey#
+    and (AccountId!=#AccountId# or #AccountId# is null)
+  </sql>
+  
+  <!--角色-->
+  <sql id="AddRole">
+    insert into [Auth_Role]
+    ([OwnerType],[Name],[Remark],[PermissionIds],[DataDimensionId],[CreatedTime])
+    values
+    (#OwnerType#,#Name#,#Remark#,#PermissionIds#,#DataDimensionId#,#CreatedTime#)
+    select SCOPE_IDENTITY()
+  </sql>
+
+  <sql id="EditRole">
+    update Auth_Role set
+    [Name]=#Name#,
+    [Remark]=#Remark#,
+    [PermissionIds]=#PermissionIds#
+    where RoleId=#RoleId#
+  </sql>
+
+  <sql id="DeleteRole">
+    delete from Auth_Role where RoleId=#RoleId#
+  </sql>
+
+  <sql id="GetRoles">
+    select * from Auth_Role
+    where 1=1
+    <condition property="OwnerTypes">
+      and OwnerType in ($OwnerTypes$)
+    </condition>
+    <condition property="Keywords">
+      and Name like '%$Keywords$%'
+    </condition>
+    <condition property="DataDimensionIds">
+      and DataDimensionId in ($DataDimensionIds$)
+    </condition>
+    <condition property="DefualtSort">
+      order by RoleId desc
+    </condition>
+    <condition property="SortField">
+      order by $SortField$ desc,RoleId desc
+    </condition>
+  </sql>
+
+  <sql id="GetRole">
+    select * from Auth_Role 
+    where RoleId=#RoleId#
+  </sql>
+
+  <sql id="IsExistsRoleByName">
+    select count(*) from Auth_Role
+    where Name=#Name#
+    and OwnerType=#OwnerType#
+    and (DataDimensionId=#DataDimensionId# or #DataDimensionId# is null)
+    and (RoleId !=#RoleId# or #RoleId# is null)
+  </sql>
+  
+  <!--角色账号中间表-->
+  <sql id="AddRoleAccount">
+    insert into [Auth_RoleAccount]
+    ([RoleId],[AccountId])
+    values
+    (#RoleId#,#AccountId#)
+    select SCOPE_IDENTITY()
+  </sql>
+
+  <sql id="DeleteRoleAccount">
+    delete from [Auth_RoleAccount] where AccountId=#AccountId#
+  </sql>
+  
+  <sql id="GetRolesByAccountId">
+    select a.* from Auth_Role a
+    left join Auth_RoleAccount b on a.RoleId=b.RoleId
+    where b.AccountId=#AccountId#
+  </sql>
+
+  <!--会话-->
+  <sql id="AddSession">
+    insert into [Auth_Session]
+    ([AccountId],[ClientIpAddress],[UserAgent],[Token],[LoginTime],[ExpireTime])
+    values
+    (#AccountId#,#ClientIpAddress#,#UserAgent#,#Token#,#LoginTime#,#ExpireTime#)
+    select SCOPE_IDENTITY()
+  </sql>
+
+  <sql id="GetSessions">
+    select a.* from Auth_Session a
+    <condition property="OwnerType">
+      left join Auth_Account b on a.AccountId=b.AccountId
+    </condition>
+    where 1=1
+    <condition property="OwnerType">
+      and b.OwnerType = #OwnerType#
+    </condition>
+    <condition property="AccountId">
+      and a.AccountId = #AccountId#
+    </condition>
+    <condition property="Keywords">
+      and a.ClientIpAddress like '%$Keywords$%'
+    </condition>
+    order by SessionId desc
+  </sql>
+</statements>

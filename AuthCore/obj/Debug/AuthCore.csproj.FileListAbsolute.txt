@@ -1,0 +1,6 @@
+E:\项目\AuthCore\AuthCore\AuthCore\bin\Debug\AuthCore.dll
+E:\项目\AuthCore\AuthCore\AuthCore\bin\Debug\AuthCore.pdb
+E:\项目\AuthCore\AuthCore\AuthCore\bin\Debug\Victory.Dao.dll
+E:\项目\AuthCore\AuthCore\AuthCore\obj\Debug\AuthCore.csprojResolveAssemblyReference.cache
+E:\项目\AuthCore\AuthCore\AuthCore\obj\Debug\AuthCore.dll
+E:\项目\AuthCore\AuthCore\AuthCore\obj\Debug\AuthCore.pdb
