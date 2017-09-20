@@ -346,9 +346,9 @@ namespace AuthCore.Dal
             return DataSources.Default.Query<SessionResponse>("GetSessionByToken", ht);
         }
 
-        public static int LogoutToken(string token)
+        public static int ReleaseToken(string token)
         {
-            return DataSources.Default.ExecuteNonQuery("LogoutToken", token);
+            return DataSources.Default.ExecuteNonQuery("ReleaseToken", token);
         }
 
         public static SessionResponse GetSession(int sessionId)

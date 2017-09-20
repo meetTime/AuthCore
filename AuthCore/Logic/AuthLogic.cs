@@ -51,46 +51,47 @@ namespace AuthCore.Logic
             }
         }
 
-        public static SessionResponse VerifySessionByToken(string token)
+        public static SessionResponse GetSessionByToken(string token)
         {
             var session= AuthDal.GetSessionByToken(token);
-            if (session==null)
-            {
-                throw new Exception("无效的Token！！！");
-            }
-
             return session;
         }
 
-        public static void LogoutToken(string token)
+        public static void ReleaseToken(string token)
         {
-            AuthDal.LogoutToken(token);
+            AuthDal.ReleaseToken(token);
         }
         #endregion
 
         #region Account
+        private object AddAccountLocker = new object();
+
         public static int AddAccount(AddAccountRequest request)
         {
-            //check
-            CheckModelIsNull(request.LoginName,50,"登录名称");
-            CheckModelIsNull(request.LoginPassword, 50, "登录密码");
-
-            var result = GetAccountByLoginName(request.LoginName,request.OwnerType,request.OwnerId);
-            if (result!=null)
+            var locker = string.Intern(request.OwnerId.ToString());
+            lock (locker)
             {
-                throw new Exception(string.Format("登录名称：【{0}】已经存在！！！", request.LoginName));
-            }
+                //check
+                CheckModelIsNull(request.LoginName, 50, "登录名称");
+                CheckModelIsNull(request.LoginPassword, 50, "登录密码");
 
-            if (!string.IsNullOrEmpty(request.AppKey))
-            {
-                if (AuthDal.IsExistsAppKey(request.AppKey) > 0)
+                var result = AuthDal.GetAccountByLoginName(request.LoginName, request.OwnerType, request.OwnerId);
+                if (result != null)
                 {
-                    throw new Exception(string.Format("AppKey：[{0}] 已存在！！！", request.AppKey));
+                    throw new Exception(string.Format("登录名称：【{0}】已经存在！！！", request.LoginName));
                 }
-            }
 
-            var obj = AuthDal.AddAccount(request);
-            return obj;
+                if (!string.IsNullOrEmpty(request.AppKey))
+                {
+                    if (AuthDal.IsExistsAppKey(request.AppKey) > 0)
+                    {
+                        throw new Exception(string.Format("AppKey：[{0}] 已存在！！！", request.AppKey));
+                    }
+                }
+
+                var obj = AuthDal.AddAccount(request);
+                return obj;
+            }
         }
 
         public static List<AccountResponse> GetAccountsByIds(List<int> accountIds)
@@ -234,6 +235,72 @@ namespace AuthCore.Logic
                 throw new Exception(string.Format("账号被禁用了,不能{0}！！！",remark));
             }
         }
+
+        /// <summary>
+        /// 自动生成不重复随机的 8位AppKey 和 32位AppSecret
+        /// </summary>
+        /// <returns></returns>
+        public static AppKeyAndSecret CreateAppKeyAndSecret()
+        {
+            AppKeyAndSecret app = new AppKeyAndSecret();
+
+            Random ro = new Random();
+            for (int i = 0; i < 100; i++)
+            {
+                app.AppKey = ro.Next(9999999, 99999999).ToString();
+                if (AuthDal.IsExistsAppKey(app.AppKey) <= 0)
+                {
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(app.AppKey))
+            {
+                throw new Exception(string.Format("AppKey 与 AppSecret 生成失败，请重试！！！"));
+            }
+
+            app.AppSecret = Guid.NewGuid().ToString().Replace("-", "");
+
+            return app;
+        }
+
+        /// <summary>
+        /// 自动生成加密的SignKey并保存到数据库 格式：OwnerType=0&OwnerId=0&LoginName=ceshi&LoginPassword=123123
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        public static string CreateSignKey(int accountId)
+        {
+            var account = IsExistsAccount(accountId);
+
+            var str = string.Format("OwnerType={0}&OwnerId={1}&LoginName={2}&LoginPassword={3}", account.OwnerType, account.OwnerId, account.LoginName, account.LoginPassword);
+
+            var signKey = MD5Encrypt32(str);
+
+            //修改SignKey
+            AuthDal.EditSignKey(accountId, signKey);
+
+            return signKey;
+        }
+
+        /// <summary>
+        /// 32位的MD5加密
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        private static string MD5Encrypt32(string str)
+        {
+            var md5 = System.Security.Cryptography.MD5.Create();
+            byte[] s = md5.ComputeHash(Encoding.UTF8.GetBytes(str));
+            string signKey = "";
+            for (int i = 0; i < s.Length; i++)
+            {
+                signKey = signKey + s[i].ToString("X");
+            }
+
+            return signKey;
+        }
+
         #endregion
 
         #region RoleAccount
@@ -348,70 +415,5 @@ namespace AuthCore.Logic
             }
         }
         #endregion
-
-        /// <summary>
-        /// 自动生成不重复随机的 8位AppKey 和 32位AppSecret
-        /// </summary>
-        /// <returns></returns>
-        public static AppKeyAndSecret CreateAppKeyAndSecret()
-        {
-            AppKeyAndSecret app = new AppKeyAndSecret();
-
-            Random ro = new Random();
-            for (int i = 0; i < 1000; i++)
-            {
-                app.AppKey= ro.Next(9999999, 99999999).ToString();
-                if (AuthDal.IsExistsAppKey(app.AppKey)<=0)
-                {
-                    break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(app.AppKey))
-            {
-                throw new Exception(string.Format("AppKey 与 AppSecret 生成失败，请重试！！！"));
-            }
-
-            app.AppSecret = Guid.NewGuid().ToString().Replace("-","");
-
-            return app;
-        }
-
-        /// <summary>
-        /// 自动生成加密的SignKey并保存到数据库 格式：OwnerType=0&OwnerId=0&LoginName=ceshi&LoginPassword=123123
-        /// </summary>
-        /// <param name="accountId"></param>
-        /// <returns></returns>
-        public static string CreateSignKey(int accountId)
-        {
-            var account = IsExistsAccount(accountId);
-
-            var str = string.Format("OwnerType={0}&OwnerId={1}&LoginName={2}&LoginPassword={3}",account.OwnerType,account.OwnerId,account.LoginName,account.LoginPassword);
-
-            var signKey = MD5Encrypt32(str);
-
-            //修改SignKey
-            AuthDal.EditSignKey(accountId,signKey);
-
-            return signKey;
-        }
-
-        /// <summary>
-        /// 32位的MD5加密
-        /// </summary>
-        /// <param name="str"></param>
-        /// <returns></returns>
-        private static string MD5Encrypt32(string str)
-        {
-            var md5 = System.Security.Cryptography.MD5.Create();
-            byte[] s = md5.ComputeHash(Encoding.UTF8.GetBytes(str));
-            string signKey = "";
-            for (int i = 0; i < s.Length; i++)
-            {
-                signKey = signKey + s[i].ToString("X");
-            }
-
-            return signKey;
-        }
     }
 }

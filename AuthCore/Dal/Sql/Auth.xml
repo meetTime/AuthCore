@@ -179,7 +179,7 @@
     and a.ExpireTime } #ExpireTime#
   </sql>
 
-  <sql id="LogoutToken">
+  <sql id="ReleaseToken">
     delete Auth_Session where Token=#Token#
   </sql>
 
