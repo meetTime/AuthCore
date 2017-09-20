@@ -46,7 +46,6 @@ namespace AuthCore.Dal
             ht.Add("LoginPassword", request.LoginPassword);
             ht.Add("AppKey", request.AppKey);
             ht.Add("AppSecret", request.AppSecret);
-            ht.Add("SignKey", request.SignKey);
             ht.Add("IpWhiteList", request.IpWhiteList);
             ht.Add("RecordStatus", (int)RecordStatus.Normal);
 
@@ -143,13 +142,27 @@ namespace AuthCore.Dal
             return DataSources.Default.ExecuteNonQuery("EditIpWhiteList", null, null, ht);
         }
 
-        public static int IsExistsAppKey(int accountId, string appKey)
+        public static int IsExistsAppKey(string appKey,int? accountId=null)
         {
             Hashtable ht = new Hashtable();
             ht.Add("AccountId", accountId);
             ht.Add("AppKey", appKey);
 
             return Convert.ToInt32(DataSources.Default.ExecuteScalar("IsExistsAppKey", null,null,ht));
+        }
+
+        public static AccountResponse GetAccountByAppKey(string appKey,string appSecret)
+        {
+            Hashtable ht = new Hashtable();
+            ht.Add("AppKey", appKey);
+            ht.Add("AppSecret", appSecret);
+
+            return DataSources.Default.Query<AccountResponse>("GetAccountByAppKey", ht);
+        }
+
+        public static AccountResponse GetAccountBySignKey(string signKey)
+        {
+            return DataSources.Default.Query<AccountResponse>("GetAccountBySignKey", signKey);
         }
         #endregion
 
@@ -291,9 +304,9 @@ namespace AuthCore.Dal
             ht.Add("AccountId", request.AccountId);
             ht.Add("ClientIpAddress", request.ClientIpAddress);
             ht.Add("UserAgent", request.UserAgent);
-            ht.Add("Token", request.Token);
+            ht.Add("Token", Guid.NewGuid().ToString());
             ht.Add("LoginTime", DateTime.Now);
-            ht.Add("ExpireTime", request.ExpireTime);
+            ht.Add("ExpireTime", DateTime.Now.AddMinutes(request.VaildTime));
 
             return Convert.ToInt32(DataSources.Default.ExecuteScalar("AddSession", null,null,ht));
         }
@@ -302,6 +315,7 @@ namespace AuthCore.Dal
         {
             Hashtable ht = new Hashtable();
             List<StatementCondition> conditions = new List<StatementCondition>();
+            ht.Add("ExpireTime", DateTime.Now);
             if (query.AccountId!=null)
             {
                 ht.Add("AccountId", query.AccountId);
@@ -321,6 +335,25 @@ namespace AuthCore.Dal
             }
 
             return DataSources.Default.QueryCollection<SessionResponse>("GetSessions", null,conditions,query.StartIndex,query.EndIndex,ht);
+        }
+
+        public static SessionResponse GetSessionByToken(string token)
+        {
+            Hashtable ht = new Hashtable();
+            ht.Add("Token", token);
+            ht.Add("ExpireTime", DateTime.Now);
+
+            return DataSources.Default.Query<SessionResponse>("GetSessionByToken", ht);
+        }
+
+        public static int LogoutToken(string token)
+        {
+            return DataSources.Default.ExecuteNonQuery("LogoutToken", token);
+        }
+
+        public static SessionResponse GetSession(int sessionId)
+        {
+            return DataSources.Default.Query<SessionResponse>("GetSession", sessionId);
         }
         #endregion
     }

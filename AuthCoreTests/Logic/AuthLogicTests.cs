@@ -25,7 +25,6 @@ namespace AuthCore.Logic.Tests
                 LoginPassword="123123",
                 AppKey="bagkangalg512121",
                 AppSecret="123123",
-                SignKey= "8621d02c384fe7f0373c6104fcd27ed1",
                 IpWhiteList= "192.168.0.152,192.168.0.153,192.168.0.154",
                 RoleIds=new List<int>() { 1,2,3}
             };
@@ -48,7 +47,7 @@ namespace AuthCore.Logic.Tests
         [TestMethod()]
         public void IsExistsAccountTest()
         {
-            var result = AuthLogic.IsExistsAccount(3);
+            //var result = AuthLogic.IsExistsAccount(3);
         }
 
         [TestMethod()]
@@ -78,7 +77,7 @@ namespace AuthCore.Logic.Tests
         [TestMethod()]
         public void EditLoginPasswordTest()
         {
-            AuthLogic.EditLoginPassword(1, "12341234");
+            AuthLogic.EditLoginPassword(1, "12341234","123123");
         }
 
         [TestMethod()]
@@ -87,11 +86,6 @@ namespace AuthCore.Logic.Tests
             AuthLogic.EditAppKeyandAppSecret(1,"gagagg899555","12341234");
         }
 
-        [TestMethod()]
-        public void EditSignKeyTest()
-        {
-            AuthLogic.EditSignKey(1, "84511gag48ega13ag8a1ge");
-        }
 
         [TestMethod()]
         public void EditIpWhiteListTest()
@@ -179,8 +173,7 @@ namespace AuthCore.Logic.Tests
                 AccountId=2,
                 ClientIpAddress="192.168.0.152",
                 UserAgent= "Mozilla/5.0 (Windows; U; Windows NT 5.1) Gecko/20070309 Firefox/2.0.0.3",
-                Token= "8d1e8c02-20d6-42ec-82ca-8238c8b66e3b",
-                ExpireTime=DateTime.Now.AddDays(1)
+                VaildTime=24*60
             };
 
             var result = AuthLogic.AddSession(request);
@@ -199,5 +192,21 @@ namespace AuthCore.Logic.Tests
             var result = AuthLogic.GetSessions(query);
         }
         #endregion
+
+        [TestMethod()]
+        public void MD5Test()
+        {
+            var test = "OwnerType=0&OwnerId=0&LoginName=ceshi&LoginPassword=123123";
+
+            System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create();
+
+            byte[] s = md5.ComputeHash(Encoding.UTF8.GetBytes(test));
+
+            string pwd="";
+            for (int i = 0; i < s.Length; i++)
+            {
+                pwd = pwd + s[i].ToString("X");
+            }
+        }
     }
 }

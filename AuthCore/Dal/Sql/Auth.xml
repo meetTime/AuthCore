@@ -3,9 +3,9 @@
   <!--账号-->
   <sql id="AddAccount">
     insert into [Auth_Account]
-    ([Name],[OwnerType],[OwnerId],[LoginName],[LoginPassword],[AppKey],[AppSecret],[SignKey],[IpWhiteList],[RecordStatus])
+    ([Name],[OwnerType],[OwnerId],[LoginName],[LoginPassword],[AppKey],[AppSecret],[IpWhiteList],[RecordStatus])
     values
-    (#Name#,#OwnerType#,#OwnerId#,#LoginName#,#LoginPassword#,#AppKey#,#AppSecret#,#SignKey#,#IpWhiteList#,
+    (#Name#,#OwnerType#,#OwnerId#,#LoginName#,#LoginPassword#,#AppKey#,#AppSecret#,#IpWhiteList#,
     #RecordStatus#)
     select SCOPE_IDENTITY()
   </sql>
@@ -61,6 +61,17 @@
     select count(*) from Auth_Account
     where AppKey=#AppKey#
     and (AccountId!=#AccountId# or #AccountId# is null)
+  </sql>
+
+  <sql id="GetAccountByAppKey">
+    select * from Auth_Account
+    where AppKey = #AppKey#
+    and AppSecret=#AppSecret#
+  </sql>
+  
+  <sql id="GetAccountBySignKey">
+    select * from Auth_Account
+    where SignKey = #SignKey#
   </sql>
   
   <!--角色-->
@@ -146,11 +157,9 @@
   </sql>
 
   <sql id="GetSessions">
-    select a.* from Auth_Session a
-    <condition property="OwnerType">
-      left join Auth_Account b on a.AccountId=b.AccountId
-    </condition>
-    where 1=1
+    select a.*,b.OwnerType,b.Name as AccountName,b.OwnerId from Auth_Session a
+    left join Auth_Account b on a.AccountId=b.AccountId
+    where a.ExpireTime } #ExpireTime#
     <condition property="OwnerType">
       and b.OwnerType = #OwnerType#
     </condition>
@@ -161,5 +170,22 @@
       and a.ClientIpAddress like '%$Keywords$%'
     </condition>
     order by SessionId desc
+  </sql>
+
+  <sql id="GetSessionByToken">
+    select a.*,b.OwnerType,b.Name as AccountName,b.OwnerId from Auth_Session a
+    left join Auth_Account b on a.AccountId=b.AccountId
+    where a.Token=#Token#
+    and a.ExpireTime } #ExpireTime#
+  </sql>
+
+  <sql id="LogoutToken">
+    delete Auth_Session where Token=#Token#
+  </sql>
+
+  <sql id="GetSession">
+    select a.*,b.OwnerType,b.Name as AccountName,b.OwnerId from Auth_Session a
+    left join Auth_Account b on a.AccountId=b.AccountId
+    where SessionId=#SessionId#
   </sql>
 </statements>

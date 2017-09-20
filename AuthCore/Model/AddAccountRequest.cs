@@ -19,7 +19,7 @@ namespace AuthCore.Model
         public int OwnerType { get; set; }
 
         /// <summary>
-        /// 所属系统Id
+        /// 所属系统Id （不存在Id的情况 默认为0）
         /// </summary>
         public int OwnerId { get; set; }
 
@@ -44,11 +44,6 @@ namespace AuthCore.Model
         public string AppSecret { get; set; }
 
         /// <summary>
-        /// 签名
-        /// </summary>
-        public string SignKey { get; set; }
-
-        /// <summary>
         /// IP白名单
         /// </summary>
         public string IpWhiteList { get; set; }
@@ -65,6 +60,13 @@ namespace AuthCore.Model
     public class AccountResponse : AccountCommon
     {
         public int AccountId { get; set; }
+
+        /// <summary>
+        /// 签名
+        /// </summary>
+        public string SignKey { get; set; }
+
+        public int RecordStatus { get; set; }
     }
 
     public enum RecordStatus
@@ -78,5 +80,12 @@ namespace AuthCore.Model
         /// 禁用的
         /// </summary>
         Disabled = 1
+    }
+
+    public class AppKeyAndSecret
+    {
+        public string AppKey { get; set; }
+
+        public string AppSecret { get; set; }
     }
 }

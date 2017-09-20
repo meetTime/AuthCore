@@ -11,6 +11,63 @@ namespace AuthCore.Logic
 {
     public class AuthLogic
     {
+        #region Token
+        public static AccountResponse VerifyAccount(int ownerType, int ownerId, string loginName, string password)
+        {
+            var account = AuthDal.GetAccountByLoginName(loginName, ownerType, ownerId);
+            VerifyAccount(account);
+
+            if (account.LoginPassword!=password)
+            {
+                throw new Exception("账号密码错误！！！");
+            }
+
+            return account;
+        }
+        public static AccountResponse VerifyAccount(string appKey, string appSecret)
+        {
+            var account= AuthDal.GetAccountByAppKey(appKey, appSecret);
+            VerifyAccount(account);
+
+            return account;
+        }
+        public static AccountResponse VerifyAccount(string signKey)
+        {
+            var account = AuthDal.GetAccountBySignKey(signKey);
+            VerifyAccount(account);
+
+            return account;
+        }
+        private static void VerifyAccount(AccountResponse account)
+        {
+            if (account == null)
+            {
+                throw new Exception("账号不存在！！！");
+            }
+
+            if (account.RecordStatus == (int)RecordStatus.Disabled)
+            {
+                throw new Exception("账号被禁用了！！！");
+            }
+        }
+
+        public static SessionResponse VerifySessionByToken(string token)
+        {
+            var session= AuthDal.GetSessionByToken(token);
+            if (session==null)
+            {
+                throw new Exception("无效的Token！！！");
+            }
+
+            return session;
+        }
+
+        public static void LogoutToken(string token)
+        {
+            AuthDal.LogoutToken(token);
+        }
+        #endregion
+
         #region Account
         public static int AddAccount(AddAccountRequest request)
         {
@@ -22,6 +79,14 @@ namespace AuthCore.Logic
             if (result!=null)
             {
                 throw new Exception(string.Format("登录名称：【{0}】已经存在！！！", request.LoginName));
+            }
+
+            if (!string.IsNullOrEmpty(request.AppKey))
+            {
+                if (AuthDal.IsExistsAppKey(request.AppKey) > 0)
+                {
+                    throw new Exception(string.Format("AppKey：[{0}] 已存在！！！", request.AppKey));
+                }
             }
 
             var obj = AuthDal.AddAccount(request);
@@ -50,7 +115,7 @@ namespace AuthCore.Logic
         /// </summary>
         /// <param name="accountId"></param>
         /// <returns></returns>
-        public static AccountResponse IsExistsAccount(int accountId)
+        private static AccountResponse IsExistsAccount(int accountId)
         {
             var obj = GetAccount(accountId);
             if (obj==null)
@@ -58,12 +123,6 @@ namespace AuthCore.Logic
                 throw new Exception(string.Format("账号不存在！！！ 【AccountId={0}】", accountId));
             }
 
-            return obj;
-        }
-
-        public static AccountResponse GetAccountByLoginName(string loginName, int ownerType, int ownerId)
-        {
-            var obj = AuthDal.GetAccountByLoginName(loginName, ownerType,ownerId);
             return obj;
         }
 
@@ -88,7 +147,7 @@ namespace AuthCore.Logic
         }
 
         /// <summary>
-        /// 禁用张哈
+        /// 禁用账号
         /// </summary>
         /// <param name="accountId"></param>
         public static void DisableAccount(int accountId)
@@ -102,11 +161,32 @@ namespace AuthCore.Logic
         /// 修改密码
         /// </summary>
         /// <param name="accountId"></param>
-        /// <param name="loginPassword"></param>
-        public static void EditLoginPassword(int accountId, string loginPassword)
+        /// <param name="newPassword"></param>
+        public static void EditLoginPassword(int accountId, string newPassword,string oldPassword)
         {
-            IsExistsAccount(accountId);
+            var account= IsExistsAccount(accountId);
+            CheckModelIsNull(oldPassword, 50, "旧密码");
+            CheckModelIsNull(newPassword, 50, "新密码");
+
+            if (account.LoginPassword!=oldPassword)
+            {
+                throw new Exception("旧密码错误！！！");
+            }
+            AccountIsCanOperate(account.RecordStatus, "修改密码");
+
+            AuthDal.EditLoginPassword(accountId, newPassword);
+        }
+
+        /// <summary>
+        /// 重置密码
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <param name="loginPassword"></param>
+        public static void ResetLoginPassword(int accountId, string loginPassword)
+        {
+            var account=IsExistsAccount(accountId);
             CheckModelIsNull(loginPassword, 50, "密码");
+            AccountIsCanOperate(account.RecordStatus, "重置密码");
 
             AuthDal.EditLoginPassword(accountId, loginPassword);
         }
@@ -119,43 +199,40 @@ namespace AuthCore.Logic
         /// <param name="appSecret"></param>
         public static void EditAppKeyandAppSecret(int accountId, string appKey, string appSecret)
         {
-            IsExistsAccount(accountId);
+            var account=IsExistsAccount(accountId);
             CheckModelIsNull(appKey, 50, "AppKey");
             CheckModelIsNull(appSecret, 50, "AppSecret");
 
-            var obj = AuthDal.IsExistsAppKey(accountId, appKey);
-            if (obj>0)
+            if (AuthDal.IsExistsAppKey(appKey, accountId) > 0)
             {
                 throw new Exception(string.Format("AppKey：[{0}] 已存在！！！",appKey));
             }
 
+            AccountIsCanOperate(account.RecordStatus, "编辑AppKey 与 AppSecret");
+
             AuthDal.EditAppKeyandAppSecret(accountId, appKey, appSecret);
-        }
-
-        /// <summary>
-        /// 编辑签名秘钥
-        /// </summary>
-        /// <param name="accountId"></param>
-        /// <param name="signKey"></param>
-        public static void EditSignKey(int accountId, string signKey)
-        {
-            IsExistsAccount(accountId);
-            CheckModelIsNull(signKey, 50, "签名秘钥");
-
-            AuthDal.EditSignKey(accountId, signKey);
         }
 
         /// <summary>
         /// 编辑IP白名单
         /// </summary>
         /// <param name="accountId"></param>
-        /// <param name="ipWhiteList"></param>
+        /// <param name="ipWhiteList">多个IP地址用逗号隔开</param>
         public static void EditIpWhiteList(int accountId, string ipWhiteList)
         {
-            IsExistsAccount(accountId);
+            var account=IsExistsAccount(accountId);
             CheckModelIsNull(ipWhiteList, 50, "IP白名单");
+            AccountIsCanOperate(account.RecordStatus, "编辑IP白名单");
 
             AuthDal.EditIpWhiteList(accountId, ipWhiteList);
+        }
+
+        private static void AccountIsCanOperate(int recordStatus,string remark)
+        {
+            if (recordStatus==(int)RecordStatus.Disabled)
+            {
+                throw new Exception(string.Format("账号被禁用了,不能{0}！！！",remark));
+            }
         }
         #endregion
 
@@ -227,10 +304,16 @@ namespace AuthCore.Logic
         #endregion
 
         #region Session
+        public static SessionResponse AddAndGetSession(AddSessionRequest request)
+        {
+            var sessionId = AddSession(request);
+            return AuthDal.GetSession(sessionId);
+        }
         public static int AddSession(AddSessionRequest request)
         {
+            IsExistsAccount(request.AccountId);
             CheckModelIsNull(request.ClientIpAddress,50,"IP地址");
-            CheckModelIsNull(request.Token, 50, "Token授权信息");
+            CheckModelIsNull(request.VaildTime, "有效时间");
 
             var obj = AuthDal.AddSession(request);
             return obj;
@@ -244,7 +327,7 @@ namespace AuthCore.Logic
         #endregion
 
         #region checkModel
-        public static void CheckModelIsNull(string value, int strMaxLenght, string modelTag)
+        private static void CheckModelIsNull(string value, int strMaxLenght, string modelTag)
         {
             if (string.IsNullOrEmpty(value))
             {
@@ -257,7 +340,7 @@ namespace AuthCore.Logic
             }
         }
 
-        public static void CheckModelIsNull(int value, string modelTag)
+        private static void CheckModelIsNull(int value, string modelTag)
         {
             if (value <= 0)
             {
@@ -265,5 +348,70 @@ namespace AuthCore.Logic
             }
         }
         #endregion
+
+        /// <summary>
+        /// 自动生成不重复随机的 8位AppKey 和 32位AppSecret
+        /// </summary>
+        /// <returns></returns>
+        public static AppKeyAndSecret CreateAppKeyAndSecret()
+        {
+            AppKeyAndSecret app = new AppKeyAndSecret();
+
+            Random ro = new Random();
+            for (int i = 0; i < 1000; i++)
+            {
+                app.AppKey= ro.Next(9999999, 99999999).ToString();
+                if (AuthDal.IsExistsAppKey(app.AppKey)<=0)
+                {
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(app.AppKey))
+            {
+                throw new Exception(string.Format("AppKey 与 AppSecret 生成失败，请重试！！！"));
+            }
+
+            app.AppSecret = Guid.NewGuid().ToString().Replace("-","");
+
+            return app;
+        }
+
+        /// <summary>
+        /// 自动生成加密的SignKey并保存到数据库 格式：OwnerType=0&OwnerId=0&LoginName=ceshi&LoginPassword=123123
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        public static string CreateSignKey(int accountId)
+        {
+            var account = IsExistsAccount(accountId);
+
+            var str = string.Format("OwnerType={0}&OwnerId={1}&LoginName={2}&LoginPassword={3}",account.OwnerType,account.OwnerId,account.LoginName,account.LoginPassword);
+
+            var signKey = MD5Encrypt32(str);
+
+            //修改SignKey
+            AuthDal.EditSignKey(accountId,signKey);
+
+            return signKey;
+        }
+
+        /// <summary>
+        /// 32位的MD5加密
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        private static string MD5Encrypt32(string str)
+        {
+            var md5 = System.Security.Cryptography.MD5.Create();
+            byte[] s = md5.ComputeHash(Encoding.UTF8.GetBytes(str));
+            string signKey = "";
+            for (int i = 0; i < s.Length; i++)
+            {
+                signKey = signKey + s[i].ToString("X");
+            }
+
+            return signKey;
+        }
     }
 }
